@@ -1,0 +1,16 @@
+<RCC>
+  <qresource prefix="/" >
+    <file>feather.ico</file>
+    <file>feather1.ico</file>
+    <file>blue.ico</file>
+    <file>cat.ico</file>
+    <file>earth.ico</file>
+    <file>earth1.ico</file>
+    <file>earth2.ico</file>
+    <file>earth3.ico</file>
+    <file>earth4.ico</file>
+    <file>earth5.ico</file>
+    <file>firefox.ico</file>
+    <file>flag.ico</file>
+  </qresource>
+</RCC>
