@@ -1107,7 +1107,7 @@ class SetMain(QWidget):
 class FlowViewWidget(QWidget):
     def __init__(self):
         QWidget.__init__(self)
-        self.resize(600,500)   
+        # self.resize(600,500)   
         self.setWindowIcon(QPixmap(Ico))
         self.setWindowTitle('查看流量')   
 
@@ -1139,84 +1139,137 @@ class FlowViewWidget(QWidget):
         self.MainGridLayout.setSpacing(0)
         self.MainGridLayout.setContentsMargins(0, 0, 0, 0)#边沿为0
 
-        self.MainGridLayout1 = QGridLayout()
-        self.MainGridLayout1.setSpacing(5)
-        self.MainGridLayout1.setContentsMargins(10, 10, 10, 10)#边沿为0
+        self.MainGridLayout1 = QHBoxLayout()
+        self.MainGridLayout1.setSpacing(0)
+        self.MainGridLayout1.setContentsMargins(10, 0, 10, 10)#边沿为0
 
         self.MainGridLayout2 = QHBoxLayout()
         self.MainGridLayout2.setSpacing(0)
         self.MainGridLayout2.setContentsMargins(10, 0, 10, 10)#边沿为0
+
+        self.MainGridLayout11 = QGridLayout()
+        self.MainGridLayout11.setSpacing(5)
+        self.MainGridLayout11.setContentsMargins(10, 10, 10, 10)#边沿为0
+
+        self.MainGridLayout12 = QVBoxLayout()
+        self.MainGridLayout12.setSpacing(0)
+        self.MainGridLayout12.setContentsMargins(0, 0, 0, 0)#边沿为0
+
+        self.MainGridLayout21 = QGridLayout()
+        self.MainGridLayout21.setSpacing(5)
+        self.MainGridLayout21.setContentsMargins(10, 10, 10, 10)#边沿为0
+
+        self.MainGridLayout22 = QVBoxLayout()
+        self.MainGridLayout22.setSpacing(0)
+        self.MainGridLayout22.setContentsMargins(0, 0, 0, 0)#边沿为0
+
+
+      
+
+        self.time_view_label = []
+        time_view_label_name = ['时差:','管程:','管程极差:','状态:',]
+        self.time_view_text = []
+
+        for i in range(4):
+            self.time_view_label.append('')
+            self.time_view_text.append('')
+
+            self.time_view_label[i] = QLabel(time_view_label_name[i])
+            self.time_view_text[i] = QLineEdit()
+
+            self.MainGridLayout11.addWidget(self.time_view_label[i],i,0)
+            self.MainGridLayout11.addWidget(self.time_view_text[i],i,1)
+
+
+
+        time_canvas = FigureCanvas(Figure(figsize=(12, 4)))
+        # Ideally one would use self.addToolBar here, but it is slightly
+        # incompatible between PyQt6 and other bindings, so we just add the
+        # toolbar as a plain widget instead.
+        self.MainGridLayout12.addWidget(NavigationToolbar(time_canvas, self))
+        self.MainGridLayout12.addWidget(time_canvas)
+
+        self.flow_view_label = []
+        flow_view_label_name = ['瞬时流量:','累计流量:','报警流量:','状态:',]
+        self.flow_view_text = []
+
+        for i in range(4):
+            self.flow_view_label.append('')
+            self.flow_view_text.append('')
+
+            self.flow_view_label[i] = QLabel(flow_view_label_name[i])
+            self.flow_view_text[i] = QLineEdit()
+
+            self.MainGridLayout21.addWidget(self.flow_view_label[i],i,0)
+            self.MainGridLayout21.addWidget(self.flow_view_text[i],i,1)
+
+
+
+        flow_canvas = FigureCanvas(Figure(figsize=(12, 4)))
+        # Ideally one would use self.addToolBar here, but it is slightly
+        # incompatible between PyQt6 and other bindings, so we just add the
+        # toolbar as a plain widget instead.
+        self.MainGridLayout22.addWidget(NavigationToolbar(flow_canvas, self))
+        self.MainGridLayout22.addWidget(flow_canvas)
+
+
+
+        self.MainGridLayout1.addLayout(self.MainGridLayout11)   
+        self.MainGridLayout1.addLayout(self.MainGridLayout12) 
+        self.MainGridLayout2.addLayout(self.MainGridLayout21)   
+        self.MainGridLayout2.addLayout(self.MainGridLayout22)   
+
+        self._time_ax = time_canvas.figure.subplots()
+        self._time_ax2 = self._time_ax.twinx()
+
+        self._flow_ax = flow_canvas.figure.subplots()
+        self._flow_ax2 = self._flow_ax.twinx()
+        
+        # self._timer = time_canvas.new_timer(50)
+        # self._timer.add_callback(self._update_canvas)
+       
+
+
+
         self.MainGridLayout.addLayout(self.MainGridLayout1)
         self.MainGridLayout.addLayout(self.MainGridLayout2)
 
-        self.WatchSet_Offset_Label = []
-        self.WatchSet_Offset_SpinBox = []
-        self.WatchSet_DataType_Label = []
-        self.WatchSet_DataType_ComboBox = []
-        self.WatchSet_CalType_Label = []
-        self.WatchSet_CalType_ComboBox = []
-        self.WatchSet_FormLayout1 = []
-        self.WatchSet_FormLayout2 = []
-        self.WatchSet_FormLayout3 = []
-        for i in range(15):
-            self.WatchSet_Offset_Label.append('')
-            self.WatchSet_Offset_SpinBox.append('')
-            self.WatchSet_DataType_Label.append('')
-            self.WatchSet_DataType_ComboBox.append('')
-            self.WatchSet_CalType_Label.append('')
-            self.WatchSet_CalType_ComboBox.append('')
-            self.WatchSet_FormLayout1.append('')
-            self.WatchSet_FormLayout2.append('')
-            self.WatchSet_FormLayout3.append('')
-            self.WatchSet_Offset_Label[i] = QLabel('偏移:')
-            self.WatchSet_DataType_Label[i] = QLabel('数据类型:')
-            self.WatchSet_CalType_Label[i] = QLabel('计算方式:')
-            self.WatchSet_Offset_SpinBox[i] = QSpinBox()
-            self.WatchSet_Offset_SpinBox[i].setRange(0,1000)
-            self.WatchSet_DataType_ComboBox[i] = QComboBox()
-            self.WatchSet_DataType_ComboBox[i].addItems(["UINT8","UINT16","UINT32","INT8","INT16","INT32","BIN8","BIN16","FLOAT","CHAR"])
-            self.WatchSet_CalType_ComboBox[i] = QComboBox()
-            
-            self.WatchSet_FormLayout1[i] = QFormLayout()
-            self.WatchSet_FormLayout2[i] = QFormLayout()
-            self.WatchSet_FormLayout3[i] = QFormLayout()
+    def _update_canvas(self,frame_data_sub):
+        total_time_diff_x = np.zeros(24)
+        total_time_diff = np.zeros(24)
+        total_wave_time = np.zeros(24)
 
-            self.WatchSet_FormLayout1[i].addRow(self.WatchSet_Offset_Label[i],self.WatchSet_Offset_SpinBox[i],)
-            self.WatchSet_FormLayout2[i].addRow(self.WatchSet_DataType_Label[i],self.WatchSet_DataType_ComboBox[i],)
-            self.WatchSet_FormLayout3[i].addRow(self.WatchSet_CalType_Label[i],self.WatchSet_CalType_ComboBox[i],)
-            
-            self.MainGridLayout1.addLayout(self.WatchSet_FormLayout1[i],i,0)
-            self.MainGridLayout1.addLayout(self.WatchSet_FormLayout2[i],i,1)
-            self.MainGridLayout1.addLayout(self.WatchSet_FormLayout3[i],i,2)
+        for i in range(24):
+            total_time_diff_x[i] = frame_data_sub[i]
+            total_time_diff[i] = frame_data_sub[i+24]
+            total_wave_time[i] = frame_data_sub[i+48]
 
-            配置数据查找(search_serial_conf,'WatchOffset'+str(i+1),self.WatchSet_Offset_SpinBox[i],'spinbox','0')
-            配置数据查找(search_serial_conf,'WatchDataType'+str(i+1),self.WatchSet_DataType_ComboBox[i],'combobox','1')
+        min_time_diff_x = np.min(total_time_diff_x)
+        max_time_diff_x = np.max(total_time_diff_x)
 
-            self.切换数据类型(i,'')
+        min_time_diff = np.min(total_time_diff)-1000
+        max_time_diff = np.max(total_time_diff)+1000
 
-            # self.WatchSet_DataType_ComboBox[i].textActivated.connect(handlerAdaptor(self.切换数据类型,index = i))
-            self.WatchSet_DataType_ComboBox[i].textActivated.connect(partial(self.切换数据类型,i))
+        self._time_ax.clear()
+        self._time_ax.set_xlim(min_time_diff_x,max_time_diff_x)
+        self._time_ax.set_ylim(min_time_diff,max_time_diff)
+        self._time_ax.plot(total_time_diff_x, total_time_diff, "b", linewidth=1,marker='.')    # 加载曲线
 
-        self.Watch_ConfirmBtn = QPushButton('确认',self)
-        self.MainGridLayout2.addWidget(self.Watch_ConfirmBtn)
+        for i in range(24):
+            self._time_ax.text(total_time_diff_x[i],total_time_diff[i],str(total_time_diff[i]))
 
-        self.Watch_ConfirmBtn.clicked.connect(lambda:self.hideSetMain())
+        self._time_ax.set_ylabel('time_diff')
+        self._time_ax.set_title('time diff distribution')
 
-    def 切换数据类型(self,index,event):
-        self.WatchSet_CalType_ComboBox[index].clear()
-        dataType = self.WatchSet_DataType_ComboBox[index].currentText()
-        if dataType == 'UINT8' or dataType == 'INT8' or dataType =='CHAR' or dataType == 'BIN8':
-            self.WatchSet_CalType_ComboBox[index].addItems(["NONE"])
-            self.WatchSet_CalType_ComboBox[index].setCurrentText("NONE")
-        elif dataType=='UINT16' or dataType=='INT16' or dataType=='BIN16':
-            self.WatchSet_CalType_ComboBox[index].addItems(["12","21"])
-            self.WatchSet_CalType_ComboBox[index].setCurrentText('21')
-        elif dataType=='UINT32' or dataType=='INT32':
-            self.WatchSet_CalType_ComboBox[index].addItems(["1234","4321","3412","2143"])
-            self.WatchSet_CalType_ComboBox[index].setCurrentText('3412')
-        elif dataType=='FLOAT':
-            self.WatchSet_CalType_ComboBox[index].addItems(["1234","4321","3412","2143"])
-            self.WatchSet_CalType_ComboBox[index].setCurrentText('4321')
+        self._time_ax2.clear()
+        self._time_ax2.set_ylabel('wave_time')
+        min_wave_time = np.min(total_wave_time)-100
+        max_wave_time = np.max(total_wave_time)+100
+        self._time_ax2.set_xlim(min_time_diff_x,max_time_diff_x)
+        self._time_ax2.set_ylim(min_wave_time,max_wave_time)
+        self._time_ax2.plot(total_time_diff_x, total_wave_time, "r", linewidth=1,marker='.')    # 加载曲线
+        for i in range(24):
+            self._time_ax2.text(total_time_diff_x[i],total_wave_time[i],str(total_wave_time[i]))
 
     def showFlowView(self,x,y):
         if self.isVisible():#判断窗口是否显示 is not None判断窗口是否存在
