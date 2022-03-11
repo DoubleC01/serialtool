@@ -9,6 +9,7 @@
 ################################################################################
 
 from Public import *
+import LoadFlowData as LD
 
 # QLineEdit[echoMode='2'] {lineedit-password-character: 9679;}\
 # QLineEdit:read-only {background: lightblue;}\
@@ -1164,12 +1165,13 @@ class FlowViewWidget(QWidget):
         self.MainGridLayout22.setContentsMargins(0, 0, 0, 0)#边沿为0
 
 
-      
+        self.LoadDataBtn = QPushButton('导入数据')
 
         self.time_view_label = []
         time_view_label_name = ['时差:','管程:','管程极差:','状态:',]
         self.time_view_text = []
 
+        self.MainGridLayout11.addWidget(self.LoadDataBtn,0,0)
         for i in range(4):
             self.time_view_label.append('')
             self.time_view_text.append('')
@@ -1177,17 +1179,21 @@ class FlowViewWidget(QWidget):
             self.time_view_label[i] = QLabel(time_view_label_name[i])
             self.time_view_text[i] = QLineEdit()
 
-            self.MainGridLayout11.addWidget(self.time_view_label[i],i,0)
-            self.MainGridLayout11.addWidget(self.time_view_text[i],i,1)
+            self.MainGridLayout11.addWidget(self.time_view_label[i],i+1,0)
+            self.MainGridLayout11.addWidget(self.time_view_text[i],i+1,1)
 
 
 
         time_canvas = FigureCanvas(Figure(figsize=(12, 4)))
+        self.timeScrollBar = QScrollBar()  #Qt.Orientation
+        self.timeScrollBar.setOrientation(Qt.Horizontal)
+        self.timeScrollBar.setSingleStep(1) 
         # Ideally one would use self.addToolBar here, but it is slightly
         # incompatible between PyQt6 and other bindings, so we just add the
         # toolbar as a plain widget instead.
         self.MainGridLayout12.addWidget(NavigationToolbar(time_canvas, self))
         self.MainGridLayout12.addWidget(time_canvas)
+        self.MainGridLayout12.addWidget(self.timeScrollBar)
 
         self.flow_view_label = []
         flow_view_label_name = ['瞬时流量:','累计流量:','报警流量:','状态:',]
@@ -1206,11 +1212,15 @@ class FlowViewWidget(QWidget):
 
 
         flow_canvas = FigureCanvas(Figure(figsize=(12, 4)))
+        self.flowScrollBar = QScrollBar()  #Qt.Orientation
+        self.flowScrollBar.setOrientation(Qt.Horizontal)
+        self.flowScrollBar.setSingleStep(1) 
         # Ideally one would use self.addToolBar here, but it is slightly
         # incompatible between PyQt6 and other bindings, so we just add the
         # toolbar as a plain widget instead.
         self.MainGridLayout22.addWidget(NavigationToolbar(flow_canvas, self))
         self.MainGridLayout22.addWidget(flow_canvas)
+        self.MainGridLayout22.addWidget(self.flowScrollBar)
 
 
 
@@ -1222,17 +1232,13 @@ class FlowViewWidget(QWidget):
         self._time_ax = time_canvas.figure.subplots()
         self._time_ax2 = self._time_ax.twinx()
 
-        self._flow_ax = flow_canvas.figure.subplots()
+        self._flow_ax = flow_canvas.figure.subplots() 
         self._flow_ax2 = self._flow_ax.twinx()
         
-        # self._timer = time_canvas.new_timer(50)
-        # self._timer.add_callback(self._update_canvas)
-       
-
-
-
         self.MainGridLayout.addLayout(self.MainGridLayout1)
         self.MainGridLayout.addLayout(self.MainGridLayout2)
+
+        self.LoadDataBtn.clicked.connect(lambda:LD.LoadFlowData())
 
     def _update_canvas(self,frame_data_sub):
         total_time_diff_x = np.zeros(24)

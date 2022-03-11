@@ -29,6 +29,8 @@ import os
 import threading
 import struct
 from functools import partial
+import struct
+import FlowView as fv
 
 # import ctypes
 # import win32con
