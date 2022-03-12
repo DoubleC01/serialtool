@@ -1106,7 +1106,10 @@ class SetMain(QWidget):
         self.hideSetMain()
 
 class FlowViewWidget(QWidget):
+    slider_rangeChanged_signal = Signal(int)  #自定义信号
+
     def __init__(self):
+        
         QWidget.__init__(self)
         # self.resize(600,500)   
         self.setWindowIcon(QPixmap(Ico))
@@ -1168,16 +1171,19 @@ class FlowViewWidget(QWidget):
         self.LoadDataBtn = QPushButton('导入数据')
 
         self.time_view_label = []
-        time_view_label_name = ['时差:','管程:','管程极差:','状态:',]
+        time_view_label_name = ['时差:','管程:','管程极差:','状态:','位置:']
         self.time_view_text = []
 
         self.MainGridLayout11.addWidget(self.LoadDataBtn,0,0)
-        for i in range(4):
+        for i in range(5):
             self.time_view_label.append('')
             self.time_view_text.append('')
 
             self.time_view_label[i] = QLabel(time_view_label_name[i])
             self.time_view_text[i] = QLineEdit()
+
+            if i ==4:
+                self.time_view_text[i].setValidator(QIntValidator())
 
             self.MainGridLayout11.addWidget(self.time_view_label[i],i+1,0)
             self.MainGridLayout11.addWidget(self.time_view_text[i],i+1,1)
@@ -1185,26 +1191,30 @@ class FlowViewWidget(QWidget):
 
 
         time_canvas = FigureCanvas(Figure(figsize=(12, 4)))
-        self.timeScrollBar = QScrollBar()  #Qt.Orientation
-        self.timeScrollBar.setOrientation(Qt.Horizontal)
-        self.timeScrollBar.setSingleStep(1) 
+        self.timeSlider = QSlider(Qt.Horizontal)  
+        self.timeSlider.setTickPosition(QSlider.TicksBelow)
+        # self.timeScrollBar.setOrientation(Qt.Horizontal)
+        # self.timeScrollBar.setSingleStep(1) 
         # Ideally one would use self.addToolBar here, but it is slightly
         # incompatible between PyQt6 and other bindings, so we just add the
         # toolbar as a plain widget instead.
         self.MainGridLayout12.addWidget(NavigationToolbar(time_canvas, self))
         self.MainGridLayout12.addWidget(time_canvas)
-        self.MainGridLayout12.addWidget(self.timeScrollBar)
+        self.MainGridLayout12.addWidget(self.timeSlider)
 
         self.flow_view_label = []
-        flow_view_label_name = ['瞬时流量:','累计流量:','报警流量:','状态:',]
+        flow_view_label_name = ['瞬时流量:','累计流量:','报警流量:','状态:','位置:']
         self.flow_view_text = []
 
-        for i in range(4):
+        for i in range(5):
             self.flow_view_label.append('')
             self.flow_view_text.append('')
 
             self.flow_view_label[i] = QLabel(flow_view_label_name[i])
             self.flow_view_text[i] = QLineEdit()
+
+            if i ==4:
+                self.flow_view_text[i].setValidator(QIntValidator())
 
             self.MainGridLayout21.addWidget(self.flow_view_label[i],i,0)
             self.MainGridLayout21.addWidget(self.flow_view_text[i],i,1)
@@ -1212,15 +1222,17 @@ class FlowViewWidget(QWidget):
 
 
         flow_canvas = FigureCanvas(Figure(figsize=(12, 4)))
-        self.flowScrollBar = QScrollBar()  #Qt.Orientation
-        self.flowScrollBar.setOrientation(Qt.Horizontal)
-        self.flowScrollBar.setSingleStep(1) 
+        self.flowSlider = QSlider(Qt.Horizontal) 
+        self.flowSlider.setTickPosition(QSlider.TicksBelow)
+        # self.flowScrollBar = QScrollBar()  #Qt.Orientation
+        # self.flowScrollBar.setOrientation(Qt.Horizontal)
+        # self.flowScrollBar.setSingleStep(1) 
         # Ideally one would use self.addToolBar here, but it is slightly
         # incompatible between PyQt6 and other bindings, so we just add the
         # toolbar as a plain widget instead.
         self.MainGridLayout22.addWidget(NavigationToolbar(flow_canvas, self))
         self.MainGridLayout22.addWidget(flow_canvas)
-        self.MainGridLayout22.addWidget(self.flowScrollBar)
+        self.MainGridLayout22.addWidget(self.flowSlider)
 
 
 
@@ -1238,7 +1250,38 @@ class FlowViewWidget(QWidget):
         self.MainGridLayout.addLayout(self.MainGridLayout1)
         self.MainGridLayout.addLayout(self.MainGridLayout2)
 
-        self.LoadDataBtn.clicked.connect(lambda:LD.LoadFlowData())
+        self.LoadDataBtn.clicked.connect(lambda:LD.LoadFlowData(self))
+
+        self.slider_rangeChanged_signal.connect(self.setSliderRange)
+        self.flowSlider.valueChanged.connect(self.flowSliderChange)
+        self.timeSlider.valueChanged.connect(self.timeSliderChange)
+        self.time_view_text[4].textEdited.connect(self.timelineEditChange)
+        self.flow_view_text[4].textEdited.connect(self.flowlineEditChange)
+
+    @Slot()
+    def setSliderRange(self, val):
+        self.timeSlider.setRange(0,val)
+        self.flowSlider.setRange(0,val)
+
+    @Slot()
+    def timeSliderChange(self, val):
+        self.time_view_text[4].setText(str(val))
+    @Slot()
+    def flowSliderChange(self, val):
+        self.flow_view_text[4].setText(str(val))
+
+    @Slot()
+    def timelineEditChange(self, val):
+        if val == '':
+            val = '0'
+        self.timeSlider.setValue(int(val))
+    @Slot()
+    def flowlineEditChange(self, val):
+        if val == '':
+            val = '0'
+        self.flowSlider.setValue(int(val))
+
+  
 
     def _update_canvas(self,frame_data_sub):
         total_time_diff_x = np.zeros(24)

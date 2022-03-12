@@ -129,7 +129,7 @@ def average_TOF(list,flag,star_index,end_index,num):
 #         for i in range(length):
 #             axm2_e.text(total_x_axis_e[i],total_wave_time_e[i],str(total_wave_time_e[i]))
 
-def LoadFlowData():
+def LoadFlowData(self):
     # root = tk.Tk()
     # root.withdraw()
 
@@ -519,7 +519,7 @@ def LoadFlowData():
         # total.cell(row+1, 16+5).value = select_wave_time_flag
         # total.cell(row+1, 16+6).value = select_time_diff_index
         # total.cell(row+1, 16+7).value = select_wave_time_index
-
+    self.slider_rangeChanged_signal.emit(datanrows)
     
 
 
