@@ -1190,7 +1190,10 @@ class FlowViewWidget(QWidget):
 
 
 
-        time_canvas = FigureCanvas(Figure(figsize=(12, 4)))
+        self.time_canvas = FigureCanvasQTAgg(Figure(figsize=(12, 4)))
+        self.time_canvas._time_ax = self.time_canvas.figure.subplots()
+        self.time_canvas._time_ax2 = self.time_canvas._time_ax.twinx()
+
         self.timeSlider = QSlider(Qt.Horizontal)  
         self.timeSlider.setTickPosition(QSlider.TicksBelow)
         # self.timeScrollBar.setOrientation(Qt.Horizontal)
@@ -1198,8 +1201,8 @@ class FlowViewWidget(QWidget):
         # Ideally one would use self.addToolBar here, but it is slightly
         # incompatible between PyQt6 and other bindings, so we just add the
         # toolbar as a plain widget instead.
-        self.MainGridLayout12.addWidget(NavigationToolbar(time_canvas, self))
-        self.MainGridLayout12.addWidget(time_canvas)
+        self.MainGridLayout12.addWidget(NavigationToolbar(self.time_canvas, self))
+        self.MainGridLayout12.addWidget(self.time_canvas)
         self.MainGridLayout12.addWidget(self.timeSlider)
 
         self.flow_view_label = []
@@ -1221,17 +1224,22 @@ class FlowViewWidget(QWidget):
 
 
 
-        flow_canvas = FigureCanvas(Figure(figsize=(12, 4)))
+        self.flow_canvas = FigureCanvasQTAgg(Figure(figsize=(12, 4)))
+        self.flow_canvas._flow_ax = self.flow_canvas.figure.subplots() 
+        self.flow_canvas._flow_ax2 = self.flow_canvas._flow_ax.twinx()
+
         self.flowSlider = QSlider(Qt.Horizontal) 
         self.flowSlider.setTickPosition(QSlider.TicksBelow)
+
+
         # self.flowScrollBar = QScrollBar()  #Qt.Orientation
         # self.flowScrollBar.setOrientation(Qt.Horizontal)
         # self.flowScrollBar.setSingleStep(1) 
         # Ideally one would use self.addToolBar here, but it is slightly
         # incompatible between PyQt6 and other bindings, so we just add the
         # toolbar as a plain widget instead.
-        self.MainGridLayout22.addWidget(NavigationToolbar(flow_canvas, self))
-        self.MainGridLayout22.addWidget(flow_canvas)
+        self.MainGridLayout22.addWidget(NavigationToolbar(self.flow_canvas, self))
+        self.MainGridLayout22.addWidget(self.flow_canvas)
         self.MainGridLayout22.addWidget(self.flowSlider)
 
 
@@ -1240,12 +1248,6 @@ class FlowViewWidget(QWidget):
         self.MainGridLayout1.addLayout(self.MainGridLayout12) 
         self.MainGridLayout2.addLayout(self.MainGridLayout21)   
         self.MainGridLayout2.addLayout(self.MainGridLayout22)   
-
-        self._time_ax = time_canvas.figure.subplots()
-        self._time_ax2 = self._time_ax.twinx()
-
-        self._flow_ax = flow_canvas.figure.subplots() 
-        self._flow_ax2 = self._flow_ax.twinx()
         
         self.MainGridLayout.addLayout(self.MainGridLayout1)
         self.MainGridLayout.addLayout(self.MainGridLayout2)
@@ -1257,15 +1259,62 @@ class FlowViewWidget(QWidget):
         self.timeSlider.valueChanged.connect(self.timeSliderChange)
         self.time_view_text[4].textEdited.connect(self.timelineEditChange)
         self.flow_view_text[4].textEdited.connect(self.flowlineEditChange)
+  
 
+    def _update_canvas(self,index):
+        if len(fv.AutoExcFlowData) == 0:
+            return
+
+
+        total_time_diff_x = np.zeros(24)
+        total_time_diff = np.zeros(24)
+        total_wave_time = np.zeros(24)
+
+        for i in range(len(fv.AutoExcFlowData[index]['x_axis'])):
+            total_time_diff_x[i] = fv.AutoExcFlowData[index]['x_axis'][i]
+            total_time_diff[i] = fv.AutoExcFlowData[index]['time_diff'][i]
+
+
+        min_time_diff_x = np.min(total_time_diff_x)
+        max_time_diff_x = np.max(total_time_diff_x)
+
+        min_time_diff = np.min(total_time_diff)-10000
+        max_time_diff = np.max(total_time_diff)+10000
+
+        self.time_canvas._time_ax.clear()
+        self.time_canvas._time_ax.set_xlim(min_time_diff_x,max_time_diff_x)
+        self.time_canvas._time_ax.set_ylim(min_time_diff,max_time_diff)
+        self.time_canvas._time_ax.plot(total_time_diff_x, total_time_diff, "b", linewidth=1,marker='.')    # 加载曲线
+
+        for i in range(len(fv.AutoExcFlowData[index]['x_axis'])):
+            self.time_canvas._time_ax.text(total_time_diff_x[i],total_time_diff[i],str(total_time_diff[i]))
+
+
+        self.time_canvas.draw()
+        # self._time_ax.set_ylabel('time_diff')
+        # self._time_ax.set_title('time diff distribution')
+
+        # self._time_ax2.clear()
+        # self._time_ax2.set_ylabel('wave_time')
+        # min_wave_time = np.min(total_wave_time)-100
+        # max_wave_time = np.max(total_wave_time)+100
+        # self._time_ax2.set_xlim(min_time_diff_x,max_time_diff_x)
+        # self._time_ax2.set_ylim(min_wave_time,max_wave_time)
+        # self._time_ax2.plot(total_time_diff_x, total_wave_time, "r", linewidth=1,marker='.')    # 加载曲线
+        # for i in range(24):
+        #     self._time_ax2.text(total_time_diff_x[i],total_wave_time[i],str(total_wave_time[i]))
     @Slot()
     def setSliderRange(self, val):
         self.timeSlider.setRange(0,val)
         self.flowSlider.setRange(0,val)
+        if val > 0:
+            self._update_canvas(0)
+
 
     @Slot()
     def timeSliderChange(self, val):
         self.time_view_text[4].setText(str(val))
+        self._update_canvas(val)
     @Slot()
     def flowSliderChange(self, val):
         self.flow_view_text[4].setText(str(val))
@@ -1275,50 +1324,13 @@ class FlowViewWidget(QWidget):
         if val == '':
             val = '0'
         self.timeSlider.setValue(int(val))
+        self._update_canvas(int(val))
     @Slot()
     def flowlineEditChange(self, val):
         if val == '':
             val = '0'
         self.flowSlider.setValue(int(val))
 
-  
-
-    def _update_canvas(self,frame_data_sub):
-        total_time_diff_x = np.zeros(24)
-        total_time_diff = np.zeros(24)
-        total_wave_time = np.zeros(24)
-
-        for i in range(24):
-            total_time_diff_x[i] = frame_data_sub[i]
-            total_time_diff[i] = frame_data_sub[i+24]
-            total_wave_time[i] = frame_data_sub[i+48]
-
-        min_time_diff_x = np.min(total_time_diff_x)
-        max_time_diff_x = np.max(total_time_diff_x)
-
-        min_time_diff = np.min(total_time_diff)-1000
-        max_time_diff = np.max(total_time_diff)+1000
-
-        self._time_ax.clear()
-        self._time_ax.set_xlim(min_time_diff_x,max_time_diff_x)
-        self._time_ax.set_ylim(min_time_diff,max_time_diff)
-        self._time_ax.plot(total_time_diff_x, total_time_diff, "b", linewidth=1,marker='.')    # 加载曲线
-
-        for i in range(24):
-            self._time_ax.text(total_time_diff_x[i],total_time_diff[i],str(total_time_diff[i]))
-
-        self._time_ax.set_ylabel('time_diff')
-        self._time_ax.set_title('time diff distribution')
-
-        self._time_ax2.clear()
-        self._time_ax2.set_ylabel('wave_time')
-        min_wave_time = np.min(total_wave_time)-100
-        max_wave_time = np.max(total_wave_time)+100
-        self._time_ax2.set_xlim(min_time_diff_x,max_time_diff_x)
-        self._time_ax2.set_ylim(min_wave_time,max_wave_time)
-        self._time_ax2.plot(total_time_diff_x, total_wave_time, "r", linewidth=1,marker='.')    # 加载曲线
-        for i in range(24):
-            self._time_ax2.text(total_time_diff_x[i],total_wave_time[i],str(total_wave_time[i]))
 
     def showFlowView(self,x,y):
         if self.isVisible():#判断窗口是否显示 is not None判断窗口是否存在

@@ -13,4 +13,4 @@ if __name__ == "__main__":
     # app.setStyle(QStyleFactory.create("Fusion"))
     app.setStyle("Fusion")
     window = MainWindow()
-    sys.exit(app.exec())
+    sys.exit(app.exec_())
