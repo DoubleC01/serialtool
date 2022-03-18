@@ -8,6 +8,7 @@
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
+
 from Public import *
 import LoadFlowData as LD
 
@@ -1169,12 +1170,18 @@ class FlowViewWidget(QWidget):
 
 
         self.LoadDataBtn = QPushButton('导入数据')
+        self.SyncLabel = QLabel('同步')
+        self.SyncCheckBox = QCheckBox()
+        self.SyncCheckBox.setCheckState(Qt.CheckState.Checked)
+        self.SyncFlag = 1
 
         self.time_view_label = []
         time_view_label_name = ['时差:','管程:','管程极差:','状态:','位置:']
         self.time_view_text = []
 
         self.MainGridLayout11.addWidget(self.LoadDataBtn,0,0)
+        self.MainGridLayout11.addWidget(self.SyncLabel,1,0)
+        self.MainGridLayout11.addWidget(self.SyncCheckBox,1,1)
         for i in range(5):
             self.time_view_label.append('')
             self.time_view_text.append('')
@@ -1185,14 +1192,16 @@ class FlowViewWidget(QWidget):
             if i ==4:
                 self.time_view_text[i].setValidator(QIntValidator())
 
-            self.MainGridLayout11.addWidget(self.time_view_label[i],i+1,0)
-            self.MainGridLayout11.addWidget(self.time_view_text[i],i+1,1)
+            self.MainGridLayout11.addWidget(self.time_view_label[i],i+2,0)
+            self.MainGridLayout11.addWidget(self.time_view_text[i],i+2,1)
 
 
 
-        self.time_canvas = FigureCanvasQTAgg(Figure(figsize=(12, 4)))
+        self.time_canvas = FigureCanvasQTAgg(Figure(figsize=(18, 6)))
         self.time_canvas._time_ax = self.time_canvas.figure.subplots()
-        self.time_canvas._time_ax2 = self.time_canvas._time_ax.twinx()
+        self.time_canvas._time_aw = self.time_canvas._time_ax.twinx()
+        self.time_canvas._time_ax2 = self.time_canvas._time_aw.twinx()
+        self.time_canvas._time_ax3 = self.time_canvas._time_aw.twinx()
 
         self.timeSlider = QSlider(Qt.Horizontal)  
         self.timeSlider.setTickPosition(QSlider.TicksBelow)
@@ -1206,17 +1215,17 @@ class FlowViewWidget(QWidget):
         self.MainGridLayout12.addWidget(self.timeSlider)
 
         self.flow_view_label = []
-        flow_view_label_name = ['瞬时流量:','累计流量:','报警流量:','状态:','位置:']
+        flow_view_label_name = ['手动处理累计(L):','自动处理累计(L):','原始累计(L):','自动处理差值(L):','原始差值(L):','位置:']
         self.flow_view_text = []
 
-        for i in range(5):
+        for i in range(6):
             self.flow_view_label.append('')
             self.flow_view_text.append('')
 
             self.flow_view_label[i] = QLabel(flow_view_label_name[i])
             self.flow_view_text[i] = QLineEdit()
 
-            if i ==4:
+            if i ==5:
                 self.flow_view_text[i].setValidator(QIntValidator())
 
             self.MainGridLayout21.addWidget(self.flow_view_label[i],i,0)
@@ -1224,9 +1233,11 @@ class FlowViewWidget(QWidget):
 
 
 
-        self.flow_canvas = FigureCanvasQTAgg(Figure(figsize=(12, 4)))
+        self.flow_canvas = FigureCanvasQTAgg(Figure(figsize=(18, 6)))
         self.flow_canvas._flow_ax = self.flow_canvas.figure.subplots() 
         self.flow_canvas._flow_ax2 = self.flow_canvas._flow_ax.twinx()
+        self.flow_canvas._flow_ax3 = self.flow_canvas._flow_ax.twinx()
+        
 
         self.flowSlider = QSlider(Qt.Horizontal) 
         self.flowSlider.setTickPosition(QSlider.TicksBelow)
@@ -1258,66 +1269,189 @@ class FlowViewWidget(QWidget):
         self.flowSlider.valueChanged.connect(self.flowSliderChange)
         self.timeSlider.valueChanged.connect(self.timeSliderChange)
         self.time_view_text[4].textEdited.connect(self.timelineEditChange)
-        self.flow_view_text[4].textEdited.connect(self.flowlineEditChange)
+        self.flow_view_text[5].textEdited.connect(self.flowlineEditChange)
+        self.SyncCheckBox.stateChanged.connect(self.SyncChange)
   
+
+    def _update_flow_canvas(self,index):
+        if len(fv.AutoExcFlowData) == 0:
+            return
+
+        flow_data_len = len(fv.AutoExcFlowData[index]['flow_x'])
+
+
+        total_flow_x = np.zeros(flow_data_len)
+        total_flow = np.zeros(flow_data_len)
+
+        total_man_flow_x = np.zeros(flow_data_len)
+        total_man_flow = np.zeros(flow_data_len)
+
+        total_origin_flow_x = np.zeros(flow_data_len)
+        total_origin_flow = np.zeros(flow_data_len)
+
+
+        for i in range(flow_data_len):
+            total_flow_x[i] = fv.AutoExcFlowData[index]['flow_x'][i]
+            total_flow[i] = fv.AutoExcFlowData[index]['flow_rate'][i]
+
+        for i in range(flow_data_len):
+            total_man_flow_x[i] = fv.AutoExcFlowData[index]['flow_x'][i]
+            total_man_flow[i] = fv.AutoExcFlowData[index]['man_flow_rate'][i]
+
+        for i in range(flow_data_len):
+            total_origin_flow_x[i] = fv.AutoExcFlowData[index]['flow_x'][i]
+            total_origin_flow[i] = fv.AutoExcFlowData[index]['origin_flow_rate'][i]
+
+
+        min_flow_x = np.min(total_flow_x)
+        max_flow_x = np.max(total_flow_x)
+
+        min_flow = -5
+        max_flow = 5
+
+        self.flow_canvas._flow_ax.clear()
+        self.flow_canvas._flow_ax.set_xlim(min_flow_x,max_flow_x)
+        self.flow_canvas._flow_ax.set_ylim(min_flow,max_flow)
+        self.flow_canvas._flow_ax.plot(total_flow_x, total_flow, "r", linewidth=1,marker='.')    # 加载曲线
+
+        for i in range(flow_data_len):
+            self.flow_canvas._flow_ax.text(total_flow_x[i],total_flow[i],str(total_flow[i]))
+
+        self.flow_canvas._flow_ax2.clear()
+        self.flow_canvas._flow_ax2.set_xlim(min_flow_x,max_flow_x)
+        self.flow_canvas._flow_ax2.set_ylim(min_flow,max_flow)
+        self.flow_canvas._flow_ax2.plot(total_man_flow_x, total_man_flow, "g", linewidth=1,marker='.')    # 加载曲线
+
+        for i in range(flow_data_len):
+            self.flow_canvas._flow_ax2.text(total_man_flow_x[i],total_man_flow[i],str(total_man_flow[i]))
+
+        self.flow_canvas._flow_ax3.clear()
+        self.flow_canvas._flow_ax3.set_xlim(min_flow_x,max_flow_x)
+        self.flow_canvas._flow_ax3.set_ylim(min_flow,max_flow)
+        self.flow_canvas._flow_ax3.plot(total_origin_flow_x, total_origin_flow, "b", linewidth=1,marker='.')    # 加载曲线
+
+        for i in range(flow_data_len):
+            self.flow_canvas._flow_ax3.text(total_origin_flow_x[i],total_origin_flow[i],str(total_origin_flow[i]))
+        
+
+        self.flow_canvas.draw()
 
     def _update_canvas(self,index):
         if len(fv.AutoExcFlowData) == 0:
             return
 
+        auto_data_len = len(fv.AutoExcFlowData[index]['x_axis'])
+        origin_data_len = len(fv.OriginFlowData[index]['x_axis'])
 
-        total_time_diff_x = np.zeros(24)
-        total_time_diff = np.zeros(24)
-        total_wave_time = np.zeros(24)
+        total_time_diff_x = np.zeros(auto_data_len)
+        total_time_diff = np.zeros(auto_data_len)
+        total_wave_time = np.zeros(auto_data_len)
 
-        for i in range(len(fv.AutoExcFlowData[index]['x_axis'])):
+        origin_time_diff_x = np.zeros(origin_data_len)
+        origin_time_diff = np.zeros(origin_data_len)
+        origin_wave_time = np.zeros(origin_data_len)
+
+        man_time_diff_x = np.zeros(origin_data_len)
+        man_time_diff = np.zeros(origin_data_len)
+
+
+        for i in range(auto_data_len):
             total_time_diff_x[i] = fv.AutoExcFlowData[index]['x_axis'][i]
             total_time_diff[i] = fv.AutoExcFlowData[index]['time_diff'][i]
 
+        for i in range(origin_data_len):
+            origin_time_diff_x[i] = fv.OriginFlowData[index]['x_axis'][i]
+            origin_time_diff[i] = fv.OriginFlowData[index]['time_diff'][i]
 
-        min_time_diff_x = np.min(total_time_diff_x)
-        max_time_diff_x = np.max(total_time_diff_x)
+        for i in range(origin_data_len):
+            origin_wave_time[i] = fv.OriginFlowData[index]['wave_time'][i]
 
-        min_time_diff = np.min(total_time_diff)-10000
-        max_time_diff = np.max(total_time_diff)+10000
+        for i in range(origin_data_len):
+            man_time_diff_x[i] = fv.OriginFlowData[index]['x_axis'][i]
+            man_time_diff[i] = fv.OriginFlowData[index]['man_time_diff'][i]
+
+
+        min_time_diff_x = np.min(origin_time_diff_x)
+        max_time_diff_x = np.max(origin_time_diff_x)
+
+        min_time_diff = -1.5
+        max_time_diff = 1.5
+
+        min_wave_time = np.min(origin_wave_time)-20
+        max_wave_time = np.min(origin_wave_time)+100
 
         self.time_canvas._time_ax.clear()
         self.time_canvas._time_ax.set_xlim(min_time_diff_x,max_time_diff_x)
         self.time_canvas._time_ax.set_ylim(min_time_diff,max_time_diff)
-        self.time_canvas._time_ax.plot(total_time_diff_x, total_time_diff, "b", linewidth=1,marker='.')    # 加载曲线
+        self.time_canvas._time_ax.plot(total_time_diff_x, total_time_diff, "r", linewidth=1,marker='.')    # 加载曲线
 
-        for i in range(len(fv.AutoExcFlowData[index]['x_axis'])):
+        for i in range(auto_data_len):
             self.time_canvas._time_ax.text(total_time_diff_x[i],total_time_diff[i],str(total_time_diff[i]))
 
+        self.time_canvas._time_aw.clear()
+        self.time_canvas._time_aw.set_xlim(min_time_diff_x,max_time_diff_x)
+        self.time_canvas._time_aw.set_ylim(min_wave_time,max_wave_time)
+        self.time_canvas._time_aw.plot(origin_time_diff_x, origin_wave_time, "k","--", linewidth=1,marker='.')    # 加载曲线
+
+        for i in range(auto_data_len):
+            self.time_canvas._time_aw.text(origin_time_diff_x[i],origin_wave_time[i],str(int(origin_wave_time[i])))
+
+        self.time_canvas._time_ax2.clear()
+        self.time_canvas._time_ax2.set_xlim(min_time_diff_x,max_time_diff_x)
+        self.time_canvas._time_ax2.set_ylim(min_time_diff,max_time_diff)
+        self.time_canvas._time_ax2.plot(origin_time_diff_x, origin_time_diff, "b", linewidth=1,marker='.')    # 加载曲线
+
+        for i in range(auto_data_len):
+            self.time_canvas._time_ax2.text(origin_time_diff_x[i],origin_time_diff[i],str(origin_time_diff[i]))
+
+        self.time_canvas._time_ax3.clear()
+        self.time_canvas._time_ax3.set_xlim(min_time_diff_x,max_time_diff_x)
+        self.time_canvas._time_ax3.set_ylim(min_time_diff,max_time_diff)
+        self.time_canvas._time_ax3.plot(man_time_diff_x, man_time_diff, "g", linewidth=1,marker='.')    # 加载曲线
+
+        for i in range(auto_data_len):
+            self.time_canvas._time_ax3.text(man_time_diff_x[i],man_time_diff[i],str(man_time_diff[i]))
 
         self.time_canvas.draw()
-        # self._time_ax.set_ylabel('time_diff')
-        # self._time_ax.set_title('time diff distribution')
 
-        # self._time_ax2.clear()
-        # self._time_ax2.set_ylabel('wave_time')
-        # min_wave_time = np.min(total_wave_time)-100
-        # max_wave_time = np.max(total_wave_time)+100
-        # self._time_ax2.set_xlim(min_time_diff_x,max_time_diff_x)
-        # self._time_ax2.set_ylim(min_wave_time,max_wave_time)
-        # self._time_ax2.plot(total_time_diff_x, total_wave_time, "r", linewidth=1,marker='.')    # 加载曲线
-        # for i in range(24):
-        #     self._time_ax2.text(total_time_diff_x[i],total_wave_time[i],str(total_wave_time[i]))
+    @Slot()
+    def SyncChange(self, val):
+        if val == Qt.CheckState.Checked:
+            self.SyncFlag = 1
+        else:
+            self.SyncFlag = 0
+
     @Slot()
     def setSliderRange(self, val):
         self.timeSlider.setRange(0,val)
         self.flowSlider.setRange(0,val)
         if val > 0:
             self._update_canvas(0)
+            self._update_flow_canvas(0)
 
 
     @Slot()
     def timeSliderChange(self, val):
         self.time_view_text[4].setText(str(val))
         self._update_canvas(val)
+        if self.SyncFlag == 1:
+            self.flowSlider.setValue(int(val))
+            self.flow_view_text[5].setText(str(val))
+            # self._update_flow_canvas(val)
+
     @Slot()
     def flowSliderChange(self, val):
         self.flow_view_text[4].setText(str(val))
+        self._update_flow_canvas(val)
+        self.flow_view_text[0].setText(str(fv.AutoExcFlowData[val]['man_flow'][3]))
+        self.flow_view_text[1].setText(str(fv.AutoExcFlowData[val]['flow'][3]))
+        self.flow_view_text[2].setText(str(fv.AutoExcFlowData[val]['origin_flow'][3]))
+        self.flow_view_text[3].setText(str(fv.AutoExcFlowData[val]['flow_diff'][3]))
+        self.flow_view_text[4].setText(str(fv.AutoExcFlowData[val]['om_flow_diff'][3]))
+        if self.SyncFlag == 1:
+            self.timeSlider.setValue(int(val))
+            self.time_view_text[4].setText(str(val))
+            # self._update_canvas(val)
 
     @Slot()
     def timelineEditChange(self, val):
@@ -1325,11 +1459,19 @@ class FlowViewWidget(QWidget):
             val = '0'
         self.timeSlider.setValue(int(val))
         self._update_canvas(int(val))
+        if self.SyncFlag == 1:
+            self.flowSlider.setValue(int(val))
+            # self._update_flow_canvas(int(val))
     @Slot()
     def flowlineEditChange(self, val):
         if val == '':
             val = '0'
         self.flowSlider.setValue(int(val))
+        # self._update_flow_canvas(int(val))
+        if self.SyncFlag == 1:
+            self.timeSlider.setValue(int(val))
+            # self._update_canvas(int(val))
+
 
 
     def showFlowView(self,x,y):

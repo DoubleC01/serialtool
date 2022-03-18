@@ -1,3 +1,4 @@
+from asyncio.windows_events import NULL
 from Public import *
 from ast import If, Return
 import xlrd
@@ -19,7 +20,7 @@ TIMEDIFFCOL = 33
 # WAVETIMECOL = 41
 WAVETIMECOL = 55
 CACHESIZE = 24  
-MAXABNORMAL = 4
+MAXABNORMAL = 6
 
 def next_index(index):
     if index < 23:
@@ -38,6 +39,24 @@ def before_index(index):
 def CalDistance(back,forward):  
     return (back + CACHESIZE - forward)%CACHESIZE
     
+def CalTimeDiffus(origin):
+    result = ((((origin%65536)/3)/65535)+((origin/65536)/3))/4
+    return round( result,5)
+
+def CalFlowm3h(timediff):
+    result = CalTimeDiffus(timediff) *6.41817998
+    return round( result,5)
+
+def CalSumFlowL(timediff):
+    result = CalTimeDiffus(timediff) *6.41817998/3.6
+    return round( result,5)
+
+def CalAvaerageFlowRate(timedifflist):
+    max_value = max(timedifflist) 
+    min_value = min(timedifflist)
+    sum_value = sum(timedifflist)
+
+    return int( (sum_value-max_value-min_value)/(len(timedifflist)-2))
 
 def average_TOF(list,flag,star_index,end_index,num):
     average = 0
@@ -144,15 +163,23 @@ def LoadFlowData(self):
     book = xlrd.open_workbook(file_path)
     sheet = book.sheet_by_index(0)
 
+
+    if book.nsheets > 1:
+        sheet2 = book.sheet_by_index(1)
+        man_flag  = 1
+    else:
+        man_flag  = 0
+
     fv.OriginFlowData.clear()
     fv.AutoExcFlowData.clear()
     fv.ManualExcFlowData.clear()
 
     datanrows = sheet.nrows
 
-    realTm = {'wave_time' : [],'time_diff' : [],'select_wave_time' : [],'select_time_diff' : [],'abnormal_wave_time_index' : [],'abnormal_time_diff_index' : [],'x_axis':[],'average_wave_time' : 0,'average_time_diff' : 0,'max_wave_time' : 0,'min_wave_time' : 0,'max_time_diff' : 0,'min_time_diff' : 0,'range' : 0,'record_cnt' : 0,'flag' : 0}
+    realTm = {'wave_time' : [],'time_diff' : [],'man_time_diff' : [],'select_wave_time' : [],'select_time_diff' : [],'abnormal_wave_time_index' : [],'abnormal_time_diff_index' : [],'x_axis':[],'average_wave_time' : 0,'average_time_diff' : 0,'max_wave_time' : 0,'min_wave_time' : 0,'max_time_diff' : 0,'min_time_diff' : 0,'range' : 0,'record_cnt' : 0,'flag' : 0}
     realTm['wave_time'] =  [0 for x in range(0, 24)]
     realTm['time_diff'] =  [0 for x in range(0, 24)]
+    realTm['man_time_diff'] =  [0 for x in range(0, 24)]
     realTm['select_wave_time'] =  [0 for x in range(0, 24)]
     realTm['select_time_diff'] =  [0 for x in range(0, 24)]
     realTm['x_axis'] =  [0 for x in range(0, 24)]
@@ -160,14 +187,28 @@ def LoadFlowData(self):
     realTm['abnormal_time_diff_index'] =  [0 for x in range(0, MAXABNORMAL)]
 
     hisTm =  {'wave_time' : [],'time_diff' : [],'x_axis':[]}
+    curTm =  {'wave_time' : [],'time_diff' : [],'man_time_diff' : [],'x_axis':[]}
 
     sumflow = 0
     sumflowsub = 0
     flowrate = 0
+    man_flowrate = 0
+    origin_flowrate = 0
+    flow = 0
+    man_flow = 0
+    origin_flow = 0
+    flow_diff = 0
+    om_flow_diff = 0
+    aver_auto_flow = 0
+    aver_man_flow = 0
+    aver_origin_flow = 0
+
     alarmsumflowsub = 0
     alarmsumflow = 0
 
-    cache = [0 for x in range(0, 6)]
+    auto_flow_cache = [0 for x in range(0, 6)]
+    man_flow_cache = [0 for x in range(0, 6)]
+    origin_flow_cache = [0 for x in range(0, 6)]
     cache_index = 0
 
     result = openpyxl.Workbook()
@@ -258,6 +299,9 @@ def LoadFlowData(self):
     record_cnt = 0
     his_cal_flag = 0
     his_flowrate_flag = 0
+    his_flowrate2 = 0
+    his_flowrate_flag2 = 0
+    flowdic= {'flow_x':[0,1,2],'flow_rate':[0,0,0],'man_flow_rate':[0,0,0],'origin_flow_rate':[0,0,0],'flow':[0,0,0],'man_flow':[0,0,0],'flow_diff':[0,0,0],'origin_flow':[0,0,0],'om_flow_diff':[0,0,0]}
     for row in range(1,datanrows):
         alarmflag = 0
         
@@ -271,6 +315,8 @@ def LoadFlowData(self):
 
             if sheet.cell_value (rowx=row, colx=i+WAVETIMECOL) != 0:
                 realTm['time_diff'][record_index] = sheet.cell_value (rowx=row, colx=i+TIMEDIFFCOL)
+                if man_flag == 1:
+                    realTm['man_time_diff'][record_index] = sheet2.cell_value (rowx=row, colx=i+TIMEDIFFCOL)
                 realTm['wave_time'][record_index] = sheet.cell_value (rowx=row, colx=i+WAVETIMECOL)
                 realTm['x_axis'][record_index] = ((row-1)+0.125*i)
                 if record_index < 23:
@@ -285,6 +331,8 @@ def LoadFlowData(self):
 
                 legal_flag = 1
                 legal_cnt = 3
+            
+            
 
                 
 
@@ -431,33 +479,60 @@ def LoadFlowData(self):
                 #     realTm['time_diff'][select_time_diff_index] = tof_average
 
                 flowrate = average_TOF(realTm['time_diff'],cal_flag,skip_index_start,skip_index_end,skip_index_distance)
-
+                man_flowrate = average_TOF(realTm['man_time_diff'],1,skip_index_start,skip_index_end,skip_index_distance)
+                origin_flowrate = average_TOF(realTm['time_diff'],1,skip_index_start,skip_index_end,skip_index_distance)
                 if cal_flag == 1:
                     his_flowrate = flowrate
-                    his_flowrate_flag = 5
+                    his_flowrate_flag = 12
+
+                    his_flowrate2 = 0
+                    his_flowrate_flag2 = 0
                     judge_index = record_index
                     for i in range(0,24):   
-                        hisTm['time_diff'].append(realTm['time_diff'][judge_index]) 
+                        hisTm['time_diff'].append(CalTimeDiffus(realTm['time_diff'][judge_index]))
                         hisTm['wave_time'].append(realTm['wave_time'][judge_index])
                         hisTm['x_axis'].append(realTm['x_axis'][judge_index])
                         judge_index = next_index(judge_index)
-                elif  cal_flag == 2:
-                    judge_index = record_index
-                    for i in range(0,24):   
-                        temprange = ((skip_index_end + CACHESIZE - skip_index_start)%CACHESIZE) - ((judge_index + CACHESIZE - skip_index_start)%CACHESIZE)
-                        if temprange >=0: #起始地址在跳过区域
-                            judge_index = next_index(judge_index)
-                            continue
-                        hisTm['time_diff'].append(realTm['time_diff'][judge_index])
-                        hisTm['wave_time'].append(realTm['wave_time'][judge_index])
-                        hisTm['x_axis'].append(realTm['x_axis'][judge_index])
-                        judge_index = next_index(judge_index)
-                elif cal_flag == 3:
+                else:
                     if his_flowrate_flag > 0:
-                        flowrate =  his_flowrate
                         his_flowrate_flag -= 1
-                    else:
-                        flowrate = 0
+                    if  cal_flag == 2:
+                        his_flowrate2 = flowrate
+                        his_flowrate_flag2 = 6
+                        if his_flowrate_flag < 6:
+                            his_flowrate_flag = 0
+                            his_flowrate = 0
+                        judge_index = record_index
+                        for i in range(0,24):   
+                            temprange = ((skip_index_end + CACHESIZE - skip_index_start)%CACHESIZE) - ((judge_index + CACHESIZE - skip_index_start)%CACHESIZE)
+                            if temprange >=0: #起始地址在跳过区域
+                                judge_index = next_index(judge_index)
+                                continue
+                            hisTm['time_diff'].append(CalTimeDiffus(realTm['time_diff'][judge_index]))
+                            hisTm['wave_time'].append(realTm['wave_time'][judge_index])
+                            hisTm['x_axis'].append(realTm['x_axis'][judge_index])
+                            judge_index = next_index(judge_index)
+                    elif cal_flag == 3:
+                        if his_flowrate_flag > 0:
+                            flowrate =  his_flowrate
+                        elif his_flowrate_flag2 > 0:
+                            flowrate =  his_flowrate2
+                            his_flowrate_flag2 -= 1
+                        else:
+                            flowrate = 0
+                        judge_index = record_index
+                        for i in range(0,24):   
+                            hisTm['time_diff'].append(CalTimeDiffus(realTm['time_diff'][judge_index])) 
+                            hisTm['wave_time'].append(realTm['wave_time'][judge_index])
+                            hisTm['x_axis'].append(realTm['x_axis'][judge_index])
+                            judge_index = next_index(judge_index)
+                judge_index = record_index
+                for i in range(0,24):   
+                    curTm['time_diff'].append(CalTimeDiffus(realTm['time_diff'][judge_index])) 
+                    curTm['man_time_diff'].append(CalTimeDiffus(realTm['man_time_diff'][judge_index])) 
+                    curTm['wave_time'].append(int(realTm['wave_time'][judge_index]))
+                    curTm['x_axis'].append(realTm['x_axis'][judge_index])
+                    judge_index = next_index(judge_index)
 
                 
                 
@@ -477,23 +552,6 @@ def LoadFlowData(self):
                 realTm['time_diff'] =  [0 for x in range(0, 24)]
                 realTm['select_wave_time'] =  [0 for x in range(0, 24)]
                 realTm['select_time_diff'] =  [0 for x in range(0, 24)]
-                
-        if row >= 3:
-            # frame_data_e.append([])
-            # frame_data_e[-1] = [0 for i in range(72)]
-            fv.AutoExcFlowData.append({})
-            fv.AutoExcFlowData[-1] = copy.deepcopy(hisTm)
-            
-            # frame_data[row-3][1][0].extend(hisTm['x_axis'])
-            # frame_data[row-3][1][1].extend(hisTm['wave_time'])
-            # frame_data[row-3][1][2].extend(hisTm['time_diff'])
-
-            hisTm.clear()
-            hisTm =  {'wave_time' : [],'time_diff' : [],'x_axis':[]}
-
-
-             
-
 
         if alarmflag == 1:
             alarmsumflowsub += flowrate
@@ -511,6 +569,77 @@ def LoadFlowData(self):
         elif sumflowsub > 3600000:
             sumflow += 1
             sumflowsub -= 3600000
+
+        auto_flow_cache.append(flowrate)
+        del(auto_flow_cache[0])
+        man_flow_cache.append(man_flowrate)
+        del(man_flow_cache[0])
+        origin_flow_cache.append(origin_flowrate)
+        del(origin_flow_cache[0])
+
+        aver_auto_flow = CalAvaerageFlowRate(auto_flow_cache)
+        aver_man_flow = CalAvaerageFlowRate(man_flow_cache)
+        aver_origin_flow = CalAvaerageFlowRate(origin_flow_cache)
+
+        # flow += CalSumFlowL(flowrate) 
+        # man_flow += CalSumFlowL(man_flowrate)
+        # flow_diff = flow - man_flow
+
+        flow += CalSumFlowL(aver_auto_flow) 
+        man_flow += CalSumFlowL(aver_man_flow)
+        origin_flow += CalSumFlowL(aver_origin_flow)
+        flow_diff = flow - man_flow
+        om_flow_diff = origin_flow - man_flow
+
+
+        flow = round(flow,5)
+        man_flow = round(man_flow,5)
+        origin_flow = round(origin_flow,5)
+        flow_diff = round(flow_diff,5)
+        om_flow_diff = round(om_flow_diff,5)
+                
+        if row >= 3:
+            flowdic['flow_x'].append(row)
+            flowdic['flow_rate'].append(CalFlowm3h(aver_auto_flow))
+            flowdic['man_flow_rate'].append(CalFlowm3h(aver_man_flow))
+            flowdic['origin_flow_rate'].append(CalFlowm3h(aver_origin_flow))
+            flowdic['flow'].append(flow)
+            flowdic['man_flow'].append(man_flow)
+            flowdic['origin_flow'].append(origin_flow)
+            flowdic['flow_diff'].append(flow_diff)
+            flowdic['om_flow_diff'].append(om_flow_diff)
+            # frame_data_e.append([])
+            # frame_data_e[-1] = [0 for i in range(72)]
+            fv.AutoExcFlowData.append({})
+            fv.AutoExcFlowData[-1] = copy.deepcopy(hisTm)
+            fv.AutoExcFlowData[-1].update(copy.deepcopy(flowdic))
+
+            fv.OriginFlowData.append({})
+            fv.OriginFlowData[-1] = copy.deepcopy(curTm)
+            
+            # frame_data[row-3][1][0].extend(hisTm['x_axis'])
+            # frame_data[row-3][1][1].extend(hisTm['wave_time'])
+            # frame_data[row-3][1][2].extend(hisTm['time_diff'])
+
+            hisTm.clear()
+            hisTm =  {'wave_time' : [],'time_diff' : [],'x_axis':[]}
+            curTm.clear()
+            curTm =  {'wave_time' : [],'time_diff' : [],'man_time_diff' : [],'x_axis':[]}
+            del(flowdic['flow_x'][0])
+            del(flowdic['flow_rate'][0])
+            del(flowdic['man_flow_rate'][0])
+            del(flowdic['origin_flow_rate'][0])
+            del(flowdic['flow'][0])
+            del(flowdic['man_flow'][0])
+            del(flowdic['flow_diff'][0])
+            del(flowdic['origin_flow'][0])
+            del(flowdic['om_flow_diff'][0])
+
+
+             
+
+
+        
         
         # total.cell(row+1, 16+1).value = sumflow
         # total.cell(row+1, 16+2).value = flowrate
@@ -519,7 +648,7 @@ def LoadFlowData(self):
         # total.cell(row+1, 16+5).value = select_wave_time_flag
         # total.cell(row+1, 16+6).value = select_time_diff_index
         # total.cell(row+1, 16+7).value = select_wave_time_index
-    self.slider_rangeChanged_signal.emit(datanrows)
+    self.slider_rangeChanged_signal.emit(datanrows-4)
     
 
 
