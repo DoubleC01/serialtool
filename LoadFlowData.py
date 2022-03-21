@@ -383,7 +383,7 @@ def LoadFlowData(self):
                             select_wave_time_flag = 2
                         else:
                             select_wave_time_flag = 3
-                    elif abnormal_distance < 5: #间距小于5
+                    elif abnormal_distance < 6: #间距小于6
                         select_wave_time_flag = 3
                     else:
                         select_wave_time_flag = 4
@@ -483,7 +483,7 @@ def LoadFlowData(self):
                 origin_flowrate = average_TOF(realTm['time_diff'],1,skip_index_start,skip_index_end,skip_index_distance)
                 if cal_flag == 1:
                     his_flowrate = flowrate
-                    his_flowrate_flag = 12
+                    his_flowrate_flag = fv.NormalhisSize
 
                     his_flowrate2 = 0
                     his_flowrate_flag2 = 0
@@ -498,8 +498,8 @@ def LoadFlowData(self):
                         his_flowrate_flag -= 1
                     if  cal_flag == 2:
                         his_flowrate2 = flowrate
-                        his_flowrate_flag2 = 6
-                        if his_flowrate_flag < 6:
+                        his_flowrate_flag2 = fv.AbnorhisSize
+                        if his_flowrate_flag < fv.AbnorhisSize:
                             his_flowrate_flag = 0
                             his_flowrate = 0
                         judge_index = record_index
@@ -598,6 +598,23 @@ def LoadFlowData(self):
         flow_diff = round(flow_diff,5)
         om_flow_diff = round(om_flow_diff,5)
                 
+        if row == 3 and cal_full_flag < 3:
+            judge_index = 0
+            for i in range(0,record_index):   
+                curTm['time_diff'].append(CalTimeDiffus(realTm['time_diff'][judge_index])) 
+               
+                curTm['wave_time'].append(int(realTm['wave_time'][judge_index]))
+                curTm['x_axis'].append(realTm['x_axis'][judge_index])
+                
+                hisTm['time_diff'].append(CalTimeDiffus(realTm['time_diff'][judge_index])) 
+    
+                hisTm['wave_time'].append(int(realTm['wave_time'][judge_index]))
+                hisTm['x_axis'].append(realTm['x_axis'][judge_index])
+
+                judge_index = next_index(judge_index)
+            
+        
+
         if row >= 3:
             flowdic['flow_x'].append(row)
             flowdic['flow_rate'].append(CalFlowm3h(aver_auto_flow))

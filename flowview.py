@@ -2,7 +2,8 @@ OriginFlowData = []
 AutoExcFlowData = []
 ManualExcFlowData = []  
 
-
+NormalhisSize = 6
+AbnorhisSize = 3
 
 
 

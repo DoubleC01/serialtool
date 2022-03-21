@@ -1176,7 +1176,7 @@ class FlowViewWidget(QWidget):
         self.SyncFlag = 1
 
         self.time_view_label = []
-        time_view_label_name = ['时差:','管程:','管程极差:','状态:','位置:']
+        time_view_label_name = ['历史合法计数1:','历史合法计数2:','管程极差:','状态:','位置:']
         self.time_view_text = []
 
         self.MainGridLayout11.addWidget(self.LoadDataBtn,0,0)
@@ -1195,7 +1195,10 @@ class FlowViewWidget(QWidget):
             self.MainGridLayout11.addWidget(self.time_view_label[i],i+2,0)
             self.MainGridLayout11.addWidget(self.time_view_text[i],i+2,1)
 
-
+        self.time_view_text[0].setValidator(QIntValidator())
+        self.time_view_text[0].setText(str(fv.NormalhisSize))
+        self.time_view_text[1].setValidator(QIntValidator())
+        self.time_view_text[1].setText(str(fv.AbnorhisSize))
 
         self.time_canvas = FigureCanvasQTAgg(Figure(figsize=(18, 6)))
         self.time_canvas._time_ax = self.time_canvas.figure.subplots()
@@ -1271,7 +1274,8 @@ class FlowViewWidget(QWidget):
         self.time_view_text[4].textEdited.connect(self.timelineEditChange)
         self.flow_view_text[5].textEdited.connect(self.flowlineEditChange)
         self.SyncCheckBox.stateChanged.connect(self.SyncChange)
-  
+        self.time_view_text[0].textEdited.connect(self.NorhislineEditChange)
+        self.time_view_text[1].textEdited.connect(self.AbnorhislineEditChange)
 
     def _update_flow_canvas(self,index):
         if len(fv.AutoExcFlowData) == 0:
@@ -1462,6 +1466,17 @@ class FlowViewWidget(QWidget):
         if self.SyncFlag == 1:
             self.flowSlider.setValue(int(val))
             # self._update_flow_canvas(int(val))
+    @Slot()
+    def NorhislineEditChange(self, val):
+        if val == '':
+            val = '6'
+        fv.NormalhisSize = int(val)
+
+    @Slot()
+    def AbnorhislineEditChange(self, val):
+        if val == '':
+            val = '3'
+        fv.AbnorhisSize = int(val)
     @Slot()
     def flowlineEditChange(self, val):
         if val == '':
