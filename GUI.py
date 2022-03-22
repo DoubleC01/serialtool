@@ -1203,8 +1203,8 @@ class FlowViewWidget(QWidget):
         self.time_canvas = FigureCanvasQTAgg(Figure(figsize=(18, 6)))
         self.time_canvas._time_ax = self.time_canvas.figure.subplots()
         self.time_canvas._time_aw = self.time_canvas._time_ax.twinx()
-        self.time_canvas._time_ax2 = self.time_canvas._time_aw.twinx()
-        self.time_canvas._time_ax3 = self.time_canvas._time_aw.twinx()
+        # self.time_canvas._time_ax2 = self.time_canvas._time_aw.twinx()
+        # self.time_canvas._time_ax3 = self.time_canvas._time_aw.twinx()
 
         self.timeSlider = QSlider(Qt.Horizontal)  
         self.timeSlider.setTickPosition(QSlider.TicksBelow)
@@ -1238,8 +1238,8 @@ class FlowViewWidget(QWidget):
 
         self.flow_canvas = FigureCanvasQTAgg(Figure(figsize=(18, 6)))
         self.flow_canvas._flow_ax = self.flow_canvas.figure.subplots() 
-        self.flow_canvas._flow_ax2 = self.flow_canvas._flow_ax.twinx()
-        self.flow_canvas._flow_ax3 = self.flow_canvas._flow_ax.twinx()
+        # self.flow_canvas._flow_ax2 = self.flow_canvas._flow_ax.twinx()
+        # self.flow_canvas._flow_ax3 = self.flow_canvas._flow_ax.twinx()
         
 
         self.flowSlider = QSlider(Qt.Horizontal) 
@@ -1316,27 +1316,34 @@ class FlowViewWidget(QWidget):
         self.flow_canvas._flow_ax.clear()
         self.flow_canvas._flow_ax.set_xlim(min_flow_x,max_flow_x)
         self.flow_canvas._flow_ax.set_ylim(min_flow,max_flow)
-        self.flow_canvas._flow_ax.plot(total_flow_x, total_flow, "r", linewidth=1,marker='.')    # 加载曲线
-
+        self.flow_canvas._flow_ax.plot(total_flow_x, total_flow, label = "Auto", color = "fuchsia", linewidth=1,marker='.')    # 加载曲线
         for i in range(flow_data_len):
             self.flow_canvas._flow_ax.text(total_flow_x[i],total_flow[i],str(total_flow[i]))
 
-        self.flow_canvas._flow_ax2.clear()
-        self.flow_canvas._flow_ax2.set_xlim(min_flow_x,max_flow_x)
-        self.flow_canvas._flow_ax2.set_ylim(min_flow,max_flow)
-        self.flow_canvas._flow_ax2.plot(total_man_flow_x, total_man_flow, "g", linewidth=1,marker='.')    # 加载曲线
-
+        self.flow_canvas._flow_ax.plot(total_origin_flow_x, total_origin_flow, linewidth=1,label = "Raw", color = "b",marker='.')    # 加载曲线
         for i in range(flow_data_len):
-            self.flow_canvas._flow_ax2.text(total_man_flow_x[i],total_man_flow[i],str(total_man_flow[i]))
-
-        self.flow_canvas._flow_ax3.clear()
-        self.flow_canvas._flow_ax3.set_xlim(min_flow_x,max_flow_x)
-        self.flow_canvas._flow_ax3.set_ylim(min_flow,max_flow)
-        self.flow_canvas._flow_ax3.plot(total_origin_flow_x, total_origin_flow, "b", linewidth=1,marker='.')    # 加载曲线
-
-        for i in range(flow_data_len):
-            self.flow_canvas._flow_ax3.text(total_origin_flow_x[i],total_origin_flow[i],str(total_origin_flow[i]))
+            self.flow_canvas._flow_ax.text(total_origin_flow_x[i],total_origin_flow[i],str(total_origin_flow[i]))
         
+        self.flow_canvas._flow_ax.plot(total_man_flow_x, total_man_flow, label = "Man", color = "darkorange", linewidth=1,marker='.')    # 加载曲线
+        for i in range(flow_data_len):
+            self.flow_canvas._flow_ax.text(total_man_flow_x[i],total_man_flow[i],str(total_man_flow[i]))
+
+        self.flow_canvas._flow_ax.legend(loc='upper left')
+        # self.flow_canvas._flow_ax3.clear()
+        # self.flow_canvas._flow_ax3.set_xlim(min_flow_x,max_flow_x)
+        # self.flow_canvas._flow_ax3.set_ylim(min_flow,max_flow)
+        # self.flow_canvas._flow_ax3.plot(total_origin_flow_x, total_origin_flow, linewidth=1,label = "Raw", color = "b",marker='.')    # 加载曲线
+        # self.flow_canvas._flow_ax3.legend(loc='upper left')
+        # for i in range(flow_data_len):
+        #     self.flow_canvas._flow_ax3.text(total_origin_flow_x[i],total_origin_flow[i],str(total_origin_flow[i]))
+        
+        # self.flow_canvas._flow_ax2.clear()
+        # self.flow_canvas._flow_ax2.set_xlim(min_flow_x,max_flow_x)
+        # self.flow_canvas._flow_ax2.set_ylim(min_flow,max_flow)
+        # self.flow_canvas._flow_ax2.plot(total_man_flow_x, total_man_flow, label = "Man", color = "darkorange", linewidth=1,marker='.')    # 加载曲线
+        # self.flow_canvas._flow_ax2.legend(loc='upper left')
+        # for i in range(flow_data_len):
+        #     self.flow_canvas._flow_ax2.text(total_man_flow_x[i],total_man_flow[i],str(total_man_flow[i]))
 
         self.flow_canvas.draw()
 
@@ -1382,39 +1389,50 @@ class FlowViewWidget(QWidget):
         max_time_diff = 1.5
 
         min_wave_time = np.min(origin_wave_time)-20
-        max_wave_time = np.min(origin_wave_time)+100
+        max_wave_time = np.max(origin_wave_time)+100
 
         self.time_canvas._time_ax.clear()
         self.time_canvas._time_ax.set_xlim(min_time_diff_x,max_time_diff_x)
         self.time_canvas._time_ax.set_ylim(min_time_diff,max_time_diff)
-        self.time_canvas._time_ax.plot(total_time_diff_x, total_time_diff, "r", linewidth=1,marker='.')    # 加载曲线
+        self.time_canvas._time_ax.plot(total_time_diff_x, total_time_diff, label = "Auto", color = "fuchsia", linewidth=1,marker='.')    # 加载曲线
 
         for i in range(auto_data_len):
             self.time_canvas._time_ax.text(total_time_diff_x[i],total_time_diff[i],str(total_time_diff[i]))
 
+        self.time_canvas._time_ax.plot(origin_time_diff_x, origin_time_diff, label = "Raw", color = "b", linewidth=1,marker='.')    # 加载曲线
+        for i in range(auto_data_len):
+            self.time_canvas._time_ax.text(origin_time_diff_x[i],origin_time_diff[i],str(origin_time_diff[i]))
+
+
+        self.time_canvas._time_ax.plot(man_time_diff_x, man_time_diff, label = "Man", color = "darkorange", linewidth=1,marker='.')    # 加载曲线
+        for i in range(auto_data_len):
+            self.time_canvas._time_ax.text(man_time_diff_x[i],man_time_diff[i],str(man_time_diff[i]))
+        
+        self.time_canvas._time_ax.legend(loc='upper left')
+
         self.time_canvas._time_aw.clear()
         self.time_canvas._time_aw.set_xlim(min_time_diff_x,max_time_diff_x)
         self.time_canvas._time_aw.set_ylim(min_wave_time,max_wave_time)
-        self.time_canvas._time_aw.plot(origin_time_diff_x, origin_wave_time, "k","--", linewidth=1,marker='.')    # 加载曲线
+        self.time_canvas._time_aw.plot(origin_time_diff_x, origin_wave_time, label = "Wave", color = "darkgray", linewidth=1,marker='.')    # 加载曲线
 
         for i in range(auto_data_len):
             self.time_canvas._time_aw.text(origin_time_diff_x[i],origin_wave_time[i],str(int(origin_wave_time[i])))
+        self.time_canvas._time_aw.legend(loc='upper right')
+        # self.time_canvas._time_ax2.clear()
+        # self.time_canvas._time_ax2.set_xlim(min_time_diff_x,max_time_diff_x)
+        # self.time_canvas._time_ax2.set_ylim(min_time_diff,max_time_diff)
+        # self.time_canvas._time_ax2.plot(origin_time_diff_x, origin_time_diff, "b", linewidth=1,marker='.')    # 加载曲线
 
-        self.time_canvas._time_ax2.clear()
-        self.time_canvas._time_ax2.set_xlim(min_time_diff_x,max_time_diff_x)
-        self.time_canvas._time_ax2.set_ylim(min_time_diff,max_time_diff)
-        self.time_canvas._time_ax2.plot(origin_time_diff_x, origin_time_diff, "b", linewidth=1,marker='.')    # 加载曲线
+        # for i in range(auto_data_len):
+        #     self.time_canvas._time_ax2.text(origin_time_diff_x[i],origin_time_diff[i],str(origin_time_diff[i]))
 
-        for i in range(auto_data_len):
-            self.time_canvas._time_ax2.text(origin_time_diff_x[i],origin_time_diff[i],str(origin_time_diff[i]))
+        # self.time_canvas._time_ax3.clear()
+        # self.time_canvas._time_ax3.set_xlim(min_time_diff_x,max_time_diff_x)
+        # self.time_canvas._time_ax3.set_ylim(min_time_diff,max_time_diff)
+        # self.time_canvas._time_ax3.plot(man_time_diff_x, man_time_diff, "darkorange", linewidth=1,marker='.')    # 加载曲线
 
-        self.time_canvas._time_ax3.clear()
-        self.time_canvas._time_ax3.set_xlim(min_time_diff_x,max_time_diff_x)
-        self.time_canvas._time_ax3.set_ylim(min_time_diff,max_time_diff)
-        self.time_canvas._time_ax3.plot(man_time_diff_x, man_time_diff, "g", linewidth=1,marker='.')    # 加载曲线
-
-        for i in range(auto_data_len):
-            self.time_canvas._time_ax3.text(man_time_diff_x[i],man_time_diff[i],str(man_time_diff[i]))
+        # for i in range(auto_data_len):
+        #     self.time_canvas._time_ax3.text(man_time_diff_x[i],man_time_diff[i],str(man_time_diff[i]))
 
         self.time_canvas.draw()
 
