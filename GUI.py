@@ -1176,7 +1176,7 @@ class FlowViewWidget(QWidget):
         self.SyncFlag = 1
 
         self.time_view_label = []
-        time_view_label_name = ['历史合法计数1:','历史合法计数2:','管程极差:','状态:','位置:']
+        time_view_label_name = ['历史合法计数1:','历史合法计数2:','始动流量L/h:','状态:','位置:']
         self.time_view_text = []
 
         self.MainGridLayout11.addWidget(self.LoadDataBtn,0,0)
@@ -1199,6 +1199,8 @@ class FlowViewWidget(QWidget):
         self.time_view_text[0].setText(str(fv.NormalhisSize))
         self.time_view_text[1].setValidator(QIntValidator())
         self.time_view_text[1].setText(str(fv.AbnorhisSize))
+        self.time_view_text[2].setValidator(QDoubleValidator())
+        self.time_view_text[2].setText(str(fv.StartFlow*1000))
 
         self.time_canvas = FigureCanvasQTAgg(Figure(figsize=(18, 6)))
         self.time_canvas._time_ax = self.time_canvas.figure.subplots()
@@ -1276,6 +1278,7 @@ class FlowViewWidget(QWidget):
         self.SyncCheckBox.stateChanged.connect(self.SyncChange)
         self.time_view_text[0].textEdited.connect(self.NorhislineEditChange)
         self.time_view_text[1].textEdited.connect(self.AbnorhislineEditChange)
+        self.time_view_text[2].textEdited.connect(self.StartFlowlineEditChange)
 
     def _update_flow_canvas(self,index):
         if len(fv.AutoExcFlowData) == 0:
@@ -1470,6 +1473,7 @@ class FlowViewWidget(QWidget):
         self.flow_view_text[2].setText(str(fv.AutoExcFlowData[val]['origin_flow'][3]))
         self.flow_view_text[3].setText(str(fv.AutoExcFlowData[val]['flow_diff'][3]))
         self.flow_view_text[4].setText(str(fv.AutoExcFlowData[val]['om_flow_diff'][3]))
+        self.time_view_text[3].setText(str(fv.AutoExcFlowData[val]['little_status'][3]))
         if self.SyncFlag == 1:
             self.timeSlider.setValue(int(val))
             self.time_view_text[4].setText(str(val))
@@ -1495,6 +1499,11 @@ class FlowViewWidget(QWidget):
         if val == '':
             val = '3'
         fv.AbnorhisSize = int(val)
+    @Slot()
+    def StartFlowlineEditChange(self, val):
+        if val == '':
+            val = '2.4'
+        fv.StartFlow = float(val)/1000
     @Slot()
     def flowlineEditChange(self, val):
         if val == '':

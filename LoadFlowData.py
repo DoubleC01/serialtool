@@ -40,15 +40,21 @@ def CalDistance(back,forward):
     return (back + CACHESIZE - forward)%CACHESIZE
     
 def CalTimeDiffus(origin):
-    result = ((((origin%65536)/3)/65535)+((origin/65536)/3))/4
+    result = ((((origin%65536)/3)/65535)+(int(origin//65536)/3))/4
     return round( result,5)
 
 def CalFlowm3h(timediff):
     result = CalTimeDiffus(timediff) *6.41817998
+    # if result < fv.StartFlow:
+    #     result = 0
     return round( result,5)
 
 def CalSumFlowL(timediff):
-    result = CalTimeDiffus(timediff) *6.41817998/3.6
+    result = CalTimeDiffus(timediff) *6.41817998
+    if result > fv.StartFlow:
+        result =  result/3.6
+    else:
+        result = 0
     return round( result,5)
 
 def CalAvaerageFlowRate(timedifflist):
@@ -76,6 +82,61 @@ def average_TOF(list,flag,star_index,end_index,num):
     else:
         average = 0
     return average
+
+def judge_little_timediff(list):
+    length = len(list)
+    status_list = [0 for x in range(0, length)]
+    status_list2 = [0 for x in range(0, length)]
+    p_flag = 0
+    u_flag = 0
+    d_flag = 0
+    histemp_status = 0
+    temp_status = 0
+    temp_flag = 0
+    cnt = 0
+    for i in range(length):
+        temp = int((list[i]/2048))
+        status_list[i] = temp
+        if temp == 0:
+            cnt += 1
+    if cnt > 4:
+        for i in range(length-1):
+            status_list2[i] = status_list[i+1] - status_list[i]
+        
+        for i in range(0,length-1):
+            if temp_flag == 0:
+                if temp_status == 0: 
+                    if status_list2[i] >= 2:
+                        temp_status = 1
+                    elif status_list2[i] <= -2:
+                        temp_status = -1
+                    else:
+                        temp_status = 0
+                elif temp_status == 1: 
+                    if status_list2[i] <= -2:
+                        temp_status = -1
+                        temp_flag = 1
+                elif temp_status == -1: 
+                    if status_list2[i] >= 2:
+                        temp_status = 1
+                        temp_flag = 1
+            elif temp_flag == 1:
+                if temp_status == 1: 
+                    if status_list2[i] <= -2:
+                        temp_status = -1
+                        temp_flag = 2
+                        break
+                elif temp_status == -1: 
+                    if status_list2[i] >= 2:
+                        temp_status = 1
+                        temp_flag = 2
+                        break
+    if temp_flag > 1:
+        return 1 
+    else:
+        return 0
+
+    
 
 # figm, axm = plt.subplots(figsize=(24, 8))  
 # axm2 = axm.twinx()
@@ -263,6 +324,7 @@ def LoadFlowData(self):
             total_wave_time[(meter_date_rows-1)*8+(temp_cols-WAVETIMECOL)] = sheet.cell(meter_date_rows,temp_cols).value
             total_wave_time_x[(meter_date_rows-1)*8+(temp_cols-WAVETIMECOL)] = (meter_date_rows - 1) + (temp_cols-WAVETIMECOL)*0.125
     frame_data = []
+    timediff_data = []
 
     for i in range(datanrows-3):
         frame_data.append([])
@@ -301,13 +363,13 @@ def LoadFlowData(self):
     his_flowrate_flag = 0
     his_flowrate2 = 0
     his_flowrate_flag2 = 0
-    flowdic= {'flow_x':[0,1,2],'flow_rate':[0,0,0],'man_flow_rate':[0,0,0],'origin_flow_rate':[0,0,0],'flow':[0,0,0],'man_flow':[0,0,0],'flow_diff':[0,0,0],'origin_flow':[0,0,0],'om_flow_diff':[0,0,0]}
+    flowdic= {'flow_x':[0,1,2],'flow_rate':[0,0,0],'man_flow_rate':[0,0,0],'origin_flow_rate':[0,0,0],'flow':[0,0,0],'man_flow':[0,0,0],'flow_diff':[0,0,0],'origin_flow':[0,0,0],'om_flow_diff':[0,0,0],'little_status':[0,0,0]}
     for row in range(1,datanrows):
         alarmflag = 0
         
         cal_flag = 0
         legal_flag = 0
-
+        little_time_diff_flag = 0
 
         for i in range(0,8):
             total.cell(row+2, i+1).value = sheet.cell_value (rowx=row, colx=i)
@@ -332,13 +394,6 @@ def LoadFlowData(self):
                 legal_flag = 1
                 legal_cnt = 3
             
-            
-
-                
-
-
-     
-
         if legal_flag == 1:
             
             if cal_full_flag == 3:
@@ -409,8 +464,19 @@ def LoadFlowData(self):
                         temprange = ((skip_index_end + CACHESIZE - skip_index_start)%CACHESIZE) - ((judge_index + CACHESIZE - skip_index_start)%CACHESIZE)
                         if temprange >=0: #起始地址在跳过区域
                             judge_index = next_index(skip_index_end)
+
+                    aaaa_index = judge_index
+                    timediff_data.clear()
+                    for i in range(0,24-skip_index_distance):
+                        timediff_data.append(realTm['time_diff'][aaaa_index])
+                        aaaa_index = next_index(aaaa_index)
+                        temprange = ((skip_index_end + CACHESIZE - skip_index_start)%CACHESIZE) - ((aaaa_index + CACHESIZE - skip_index_start)%CACHESIZE)
+                        if temprange >=0: #起始地址在跳过区域
+                            aaaa_index = next_index(skip_index_end)
+
                     for i in range(0,23-skip_index_distance):  
                         temp_next_index = next_index(judge_index)
+                        
                         if select_wave_time_flag > 1:
                             temprange = ((skip_index_end + CACHESIZE - skip_index_start)%CACHESIZE) - ((temp_next_index + CACHESIZE - skip_index_start)%CACHESIZE)
                             if temprange >=0: #地址在跳过区域
@@ -442,6 +508,8 @@ def LoadFlowData(self):
                         select_time_diff_flag = 1
                     else:
                         select_time_diff_flag = 0
+                        little_time_diff_flag = judge_little_timediff(timediff_data)
+                        
 
                     if select_wave_time_flag == 0:
                         if select_time_diff_flag == 0:
@@ -481,6 +549,9 @@ def LoadFlowData(self):
                 flowrate = average_TOF(realTm['time_diff'],cal_flag,skip_index_start,skip_index_end,skip_index_distance)
                 man_flowrate = average_TOF(realTm['man_time_diff'],1,skip_index_start,skip_index_end,skip_index_distance)
                 origin_flowrate = average_TOF(realTm['time_diff'],1,skip_index_start,skip_index_end,skip_index_distance)
+                if little_time_diff_flag:
+                    flowrate = 0
+                
                 if cal_flag == 1:
                     his_flowrate = flowrate
                     his_flowrate_flag = fv.NormalhisSize
@@ -579,11 +650,9 @@ def LoadFlowData(self):
 
         aver_auto_flow = CalAvaerageFlowRate(auto_flow_cache)
         aver_man_flow = CalAvaerageFlowRate(man_flow_cache)
-        aver_origin_flow = CalAvaerageFlowRate(origin_flow_cache)
-
-        # flow += CalSumFlowL(flowrate) 
-        # man_flow += CalSumFlowL(man_flowrate)
-        # flow_diff = flow - man_flow
+        # aver_origin_flow = CalAvaerageFlowRate(origin_flow_cache)
+        aver_origin_flow = origin_flowrate
+ 
 
         flow += CalSumFlowL(aver_auto_flow) 
         man_flow += CalSumFlowL(aver_man_flow)
@@ -625,6 +694,7 @@ def LoadFlowData(self):
             flowdic['origin_flow'].append(origin_flow)
             flowdic['flow_diff'].append(flow_diff)
             flowdic['om_flow_diff'].append(om_flow_diff)
+            flowdic['little_status'].append(little_time_diff_flag)
             # frame_data_e.append([])
             # frame_data_e[-1] = [0 for i in range(72)]
             fv.AutoExcFlowData.append({})
@@ -651,6 +721,7 @@ def LoadFlowData(self):
             del(flowdic['flow_diff'][0])
             del(flowdic['origin_flow'][0])
             del(flowdic['om_flow_diff'][0])
+            del(flowdic['little_status'][0])
 
 
              

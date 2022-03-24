@@ -4,6 +4,7 @@ ManualExcFlowData = []
 
 NormalhisSize = 6
 AbnorhisSize = 3
+StartFlow = 0.0024
 
 
 
