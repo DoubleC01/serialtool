@@ -93,6 +93,7 @@ def judge_little_timediff(list):
     histemp_status = 0
     temp_status = 0
     temp_flag = 0
+    start_index = 0
     cnt = 0
     for i in range(length):
         temp = int((list[i]/2048))
@@ -108,16 +109,26 @@ def judge_little_timediff(list):
                 if temp_status == 0: 
                     if status_list2[i] >= 2:
                         temp_status = 1
+                        start_index = i
                     elif status_list2[i] <= -2:
                         temp_status = -1
+                        start_index = i
                     else:
                         temp_status = 0
                 elif temp_status == 1: 
                     if status_list2[i] <= -2:
+                        if status_list2[i] <= -10 and i - start_index == 1:
+                            if status_list2[start_index]+status_list2[i] < 2 and status_list2[start_index]+status_list2[i] > -2:
+                                temp_flag = 2
+                                break
                         temp_status = -1
                         temp_flag = 1
                 elif temp_status == -1: 
                     if status_list2[i] >= 2:
+                        if status_list2[i] >= 10 and i - start_index == 1:
+                            if status_list2[start_index]+status_list2[i] < 2 and status_list2[start_index]+status_list2[i] > -2:
+                                temp_flag = 2
+                                break
                         temp_status = 1
                         temp_flag = 1
             elif temp_flag == 1:
@@ -131,10 +142,9 @@ def judge_little_timediff(list):
                         temp_status = 1
                         temp_flag = 2
                         break
-    if temp_flag > 1:
-        return 1 
-    else:
-        return 0
+
+        return temp_flag 
+
 
     
 
@@ -253,6 +263,7 @@ def LoadFlowData(self):
     sumflow = 0
     sumflowsub = 0
     flowrate = 0
+    delay_flowrate = 0
     man_flowrate = 0
     origin_flowrate = 0
     flow = 0
@@ -363,6 +374,7 @@ def LoadFlowData(self):
     his_flowrate_flag = 0
     his_flowrate2 = 0
     his_flowrate_flag2 = 0
+    his_little_time_diff_flag = 0
     flowdic= {'flow_x':[0,1,2],'flow_rate':[0,0,0],'man_flow_rate':[0,0,0],'origin_flow_rate':[0,0,0],'flow':[0,0,0],'man_flow':[0,0,0],'flow_diff':[0,0,0],'origin_flow':[0,0,0],'om_flow_diff':[0,0,0],'little_status':[0,0,0]}
     for row in range(1,datanrows):
         alarmflag = 0
@@ -370,6 +382,7 @@ def LoadFlowData(self):
         cal_flag = 0
         legal_flag = 0
         little_time_diff_flag = 0
+        
 
         for i in range(0,8):
             total.cell(row+2, i+1).value = sheet.cell_value (rowx=row, colx=i)
@@ -509,6 +522,7 @@ def LoadFlowData(self):
                     else:
                         select_time_diff_flag = 0
                         little_time_diff_flag = judge_little_timediff(timediff_data)
+
                         
 
                     if select_wave_time_flag == 0:
@@ -549,9 +563,14 @@ def LoadFlowData(self):
                 flowrate = average_TOF(realTm['time_diff'],cal_flag,skip_index_start,skip_index_end,skip_index_distance)
                 man_flowrate = average_TOF(realTm['man_time_diff'],1,skip_index_start,skip_index_end,skip_index_distance)
                 origin_flowrate = average_TOF(realTm['time_diff'],1,skip_index_start,skip_index_end,skip_index_distance)
-                if little_time_diff_flag:
+                if little_time_diff_flag ==2:
                     flowrate = 0
-                
+                    if his_little_time_diff_flag == 1:
+                        delay_flowrate = 0
+                if little_time_diff_flag == 1:
+                    if his_little_time_diff_flag == 2:
+                        flowrate = 0
+
                 if cal_flag == 1:
                     his_flowrate = flowrate
                     his_flowrate_flag = fv.NormalhisSize
@@ -641,12 +660,15 @@ def LoadFlowData(self):
             sumflow += 1
             sumflowsub -= 3600000
 
-        auto_flow_cache.append(flowrate)
+        auto_flow_cache.append(delay_flowrate)
         del(auto_flow_cache[0])
         man_flow_cache.append(man_flowrate)
         del(man_flow_cache[0])
         origin_flow_cache.append(origin_flowrate)
         del(origin_flow_cache[0])
+
+        delay_flowrate = flowrate
+        his_little_time_diff_flag = little_time_diff_flag
 
         aver_auto_flow = CalAvaerageFlowRate(auto_flow_cache)
         aver_man_flow = CalAvaerageFlowRate(man_flow_cache)
